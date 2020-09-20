@@ -1,0 +1,18 @@
+service: aws-ner
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.7
+
+functions:
+  ner-get-entities:
+    handler: handler.get_entities
+
+plugins:
+  - serverless-python-requirements
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
+
