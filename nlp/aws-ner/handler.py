@@ -1,9 +1,3 @@
-"""
-Work In Progress
-- Create Lambda Layer for SpaCy
-
-"""
-
 import json
 import spacy
 

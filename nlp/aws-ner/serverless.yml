@@ -9,10 +9,7 @@ provider:
 functions:
   ner-get-entities:
     handler: handler.get_entities
-
-plugins:
-  - serverless-python-requirements
-custom:
-  pythonRequirements:
-    dockerizePip: non-linux
-
+    memorySize: 512
+    timeout: 10
+    layers:
+      - arn:aws:lambda:us-east-9:012345678901:layer:spacy-en-core-web-sm:3
