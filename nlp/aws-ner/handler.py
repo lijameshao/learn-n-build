@@ -14,7 +14,16 @@ def extract_entities(text):
 
 def get_entities(event, context):
 
-    entities, entity_labels = extract_entities(event["text"])
+    try:
+        text = event["body"]
+    except KeyError:
+        response = {
+            "statusCode": 400,
+            "body": json.dumps("Please enter the text to get entities for in the request body.")
+        }
+        return response
+    
+    entities, entity_labels = extract_entities(text)
     
     body = {
         "entities": entities,
