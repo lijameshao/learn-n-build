@@ -19,10 +19,17 @@ def get_entities(event, context):
     except KeyError:
         response = {
             "statusCode": 400,
-            "body": json.dumps("Please enter the text to get entities for in the request body.")
+            "body": json.dumps("Request body required.")
         }
         return response
     
+    if len(text) > 256:
+        response = {
+            "statusCode": 400,
+            "body": json.dumps("Text is restricted to under 256 characters.")
+        }
+        return response
+
     entities, entity_labels = extract_entities(text)
     
     body = {
