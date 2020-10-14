@@ -9,11 +9,11 @@ import spacy
 import pandas as pd
 
 def extract_entities(summary):
-    
+
     doc = nlp(summary)
     entities = [ent.text for ent in doc.ents]
     entity_labels = [ent.label_ for ent in doc.ents]
-    
+
     return entities, entity_labels
 
 nlp = spacy.load("en_core_web_sm")
