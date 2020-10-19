@@ -5,19 +5,16 @@ Get historical news headlines from CryptoCompare API
 
 import requests
 import time
-import json
+import utils
+
 
 start_ts = 1577836800 # 1st Jan, 2020
 end_ts = 1601510400 # 1st Oct, 2020
-news_output_dir = "data"
+output_fp = "data/news.json"
 api_key = ""
 if not api_key:
     raise Exception("Please enter your API key")
 
-
-def json_save(data, fp):
-    with open(fp, "w") as f:
-        json.dump(data, f)
 
 def fetch_news_articles(to_ts, api_key):
     
@@ -48,8 +45,7 @@ while earliest_ts > start_ts:
     counter += 1
 
     if counter % 10 == 0:
-        output_fp = f"{news_output_dir}/news.json"
-        json_save(all_news_articles, output_fp)
+        utils.json_save(all_news_articles, output_fp)
 
     print(counter)
     time.sleep(1)
