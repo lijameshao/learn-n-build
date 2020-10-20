@@ -14,6 +14,12 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
+
+preprocessed_news_fp = "data/preprocessed_news.csv"
+price_raw_output_fp = "data/raw_price.csv"
+price_train_output_fp = "data/train_price.csv"
+price_test_output_fp = "data/train_price.csv"
+
 FSYM = "BTC"
 TSYM = "USD"
 start_ts = 1577491200
@@ -77,7 +83,6 @@ df_test["price_ahead"] = df_test["price_ahead"].iloc[:-rolling_n_days]
 df_test["forward_return"] = df_test["forward_return"].iloc[:-rolling_n_days]
 
 
-
 neg_bound = df_train["forward_return"].describe(percentiles=[0.33, 0.66])["33%"]
 pos_bound = df_train["forward_return"].describe(percentiles=[0.33, 0.66])["66%"]
 
@@ -91,6 +96,57 @@ df_test["label"] = df_test["forward_return"].apply(
     lambda x: label_returns(x, neg_bound_test, pos_bound_test))
 
 df_raw = pd.DataFrame(price_data)
-df_raw.to_csv("data/raw_price.csv", index=False)
-df_train.to_csv("data/train.csv", index=False)
-df_test.to_csv("data/test.csv", index=False)
+df_raw.to_csv(price_raw_output_fp, index=False)
+df_train.to_csv(price_train_output_fp, index=False)
+df_test.to_csv(price_test_output_fp, index=False)
+
+
+# =============================================================================
+# 
+# Label news data
+# 
+# =============================================================================
+
+df_price_train = pd.read_csv("data/train_price.csv")
+df_price_train["time"] = pd.to_datetime(df_price_train["time"])
+df_price_test = pd.read_csv("data/test_price.csv")
+df_price_test["time"] = pd.to_datetime(df_price_test["time"])
+
+def label_news(df_news, df_price):
+    
+    df_price = df_price.set_index("time").copy()
+    news_labels = []
+
+    for idx, row in df_news.iterrows():
+        published_on_date = row["published_on"].date()
+        label = df_price.loc[published_on_date]["label"]
+        news_labels.append(label)
+
+    df_news["label"] = news_labels
+
+    return df_news
+
+
+def split_news_train_test(df_news, train_start, train_end, test_end):
+    
+    df_news_train = df_news[(df_news["published_on"] < train_end) & 
+                            (df_news["published_on"] >= train_start)].copy()
+    df_news_test = df_news[(df_news["published_on"] < test_end) &
+                           (df_news["published_on"] >= train_end)].copy()
+    
+    return df_news_train, df_news_test
+
+
+
+df_news = pd.read_csv(preprocessed_news_fp)
+df_news["published_on"] = pd.to_datetime(df_news["published_on"])
+
+df_news_train, df_news_test = split_news_train_test(df_news, train_start,
+                                                    train_end, test_end)
+
+# Inefficient but ok for such small sample
+df_news_train = label_news(df_news_train, df_price_train)
+df_news_test = label_news(df_news_test, df_price_test)
+
+df_news_train.to_csv("data/train_news.csv", index=False)
+df_news_test.to_csv("data/test_news.csv", index=False)

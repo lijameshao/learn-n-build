@@ -10,7 +10,7 @@ import utils
 
 
 news_articles_fp = "data/news.json"
-news_articles_output_csv_fp = "data/prepreocessed_news.csv"
+news_articles_output_csv_fp = "data/preprocessed_news.csv"
 
 
 def preprocess(df):
