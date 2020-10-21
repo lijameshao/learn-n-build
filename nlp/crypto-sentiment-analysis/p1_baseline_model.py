@@ -94,6 +94,20 @@ df_test_predicted = pd.DataFrame( data={"text": X_test, "ground_truth": y_test,
 with open("trained_models/baseline_tfidf_nb.pkl", "wb") as f:
     pickle.dump(model, f)
 
+
+"""
+              precision    recall  f1-score   support
+
+          -1       0.64      0.84      0.73       176
+           0       0.67      0.62      0.64       188
+           1       0.62      0.49      0.55       180
+
+    accuracy                           0.65       544
+   macro avg       0.64      0.65      0.64       544
+weighted avg       0.64      0.65      0.64       544
+"""
+
+
 # =============================================================================
 # 
 # Vader sentiment comparison
@@ -123,3 +137,16 @@ for sentence in X_test:
 
 df_test_predicted["vader_sentiment"] = vader_sentiment
 print(classification_report(y_test, vader_sentiment))
+
+"""
+              precision    recall  f1-score   support
+
+          -1       0.67      0.25      0.36       176
+           0       0.49      0.51      0.50       188
+           1       0.46      0.72      0.56       180
+
+    accuracy                           0.49       544
+   macro avg       0.54      0.49      0.47       544
+weighted avg       0.54      0.49      0.47       544
+
+"""
