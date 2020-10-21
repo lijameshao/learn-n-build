@@ -20,7 +20,7 @@ import pickle
 
 def get_f1_score(model, X_train_tfidf, y_train):
     """
-    Get average AUC score
+    Get average f1 score
     """
     kfold = StratifiedKFold(10, shuffle=True, random_state=3)
 
