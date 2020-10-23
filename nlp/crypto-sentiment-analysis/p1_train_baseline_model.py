@@ -60,7 +60,7 @@ def handle_class_imbalance(df, undersample=True):
 
 financial_news_fp = "data/financial_news_data.csv"
 df = pd.read_csv(financial_news_fp, names=["label", "text"], engine="python")
-replace_labels = {"neutral": 0, "negative": -1, "positive": 1}
+replace_labels = {"neutral": 1, "negative": 0, "positive": 2}
 
 df["text"] = df["text"].str.replace("[^\x00-\x7F]+", " ", regex=True)
 df["label"] = df["label"].replace(replace_labels)
@@ -68,7 +68,7 @@ df["label"] = df["label"].replace(replace_labels)
 # Handle Class imbalance
 # df["label"].hist()
 df = handle_class_imbalance(df, undersample=True)
-
+df.to_csv("data/financial_news_data_downsampled.csv", index=False)
 
 X = df["text"]
 Y = df["label"]
@@ -98,13 +98,13 @@ with open("trained_models/baseline_tfidf_nb.pkl", "wb") as f:
 """
               precision    recall  f1-score   support
 
-          -1       0.64      0.84      0.73       176
-           0       0.67      0.62      0.64       188
-           1       0.62      0.49      0.55       180
+           0       0.59      0.78      0.67       176
+           1       0.65      0.56      0.60       188
+           2       0.55      0.44      0.49       180
 
-    accuracy                           0.65       544
-   macro avg       0.64      0.65      0.64       544
-weighted avg       0.64      0.65      0.64       544
+    accuracy                           0.60       544
+   macro avg       0.60      0.60      0.59       544
+weighted avg       0.60      0.60      0.59       544
 """
 
 
@@ -119,11 +119,11 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 def categorise_vader_compound_score(score, pos_threshold, neg_threshold):
 
     if score <= neg_threshold:
-        return -1
-    elif score > neg_threshold and score <= pos_threshold:
         return 0
-    else:
+    elif score > neg_threshold and score <= pos_threshold:
         return 1
+    else:
+        return 2
 
 analyzer = SentimentIntensityAnalyzer()
 
@@ -141,12 +141,12 @@ print(classification_report(y_test, vader_sentiment))
 """
               precision    recall  f1-score   support
 
-          -1       0.67      0.25      0.36       176
-           0       0.49      0.51      0.50       188
-           1       0.46      0.72      0.56       180
+           0       0.72      0.31      0.43       176
+           1       0.54      0.54      0.54       188
+           2       0.47      0.73      0.57       180
 
-    accuracy                           0.49       544
-   macro avg       0.54      0.49      0.47       544
-weighted avg       0.54      0.49      0.47       544
+    accuracy                           0.53       544
+   macro avg       0.58      0.53      0.51       544
+weighted avg       0.57      0.53      0.51       544
 
 """

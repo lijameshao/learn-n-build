@@ -18,7 +18,7 @@ from datetime import datetime
 preprocessed_news_fp = "data/preprocessed_news.csv"
 price_raw_output_fp = "data/raw_price.csv"
 price_train_output_fp = "data/train_price.csv"
-price_test_output_fp = "data/train_price.csv"
+price_test_output_fp = "data/test_price.csv"
 
 FSYM = "BTC"
 TSYM = "USD"
@@ -55,11 +55,11 @@ def label_returns(pct_change, neg_bound, pos_bound):
     if pd.isnull(pct_change):
         return np.nan
     if pct_change <= neg_bound:
-        return -1
-    elif pct_change > pos_bound:
-        return 1
-    else:
         return 0
+    elif pct_change > pos_bound:
+        return 2
+    else:
+        return 1
 
 
 price_data = get_price(FSYM, TSYM, start_ts, end_ts)
@@ -128,12 +128,12 @@ def label_news(df_news, df_price):
 
 
 def split_news_train_test(df_news, train_start, train_end, test_end):
-    
+
     df_news_train = df_news[(df_news["published_on"] < train_end) & 
                             (df_news["published_on"] >= train_start)].copy()
     df_news_test = df_news[(df_news["published_on"] < test_end) &
                            (df_news["published_on"] >= train_end)].copy()
-    
+
     return df_news_train, df_news_test
 
 
