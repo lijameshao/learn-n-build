@@ -1,0 +1,36 @@
+@font-face {
+    font-family: "Red Hat Display";
+    src: url(https://fonts.google.com/specimen/Red+Hat+Display);
+}
+
+body {
+    font-family: "Red Hat Display";
+    background-image: url(./images/pattern-background-desktop.svg);
+}
+
+.card {
+    background-color: white;
+    border-radius: 1em;
+    overflow: hidden;
+    text-align: center;
+    height: 500px;
+    width: 400px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.card .image {
+    width: 100%;
+    height: auto;
+}
+
+.card .header {
+    font-size: larger;
+    margin: 1em;
+}
+
+.card .body {
+    margin: 1em;
+    padding: 1em;
+}
