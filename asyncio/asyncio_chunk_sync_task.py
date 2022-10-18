@@ -1,8 +1,3 @@
-"""
-Goal:
-try calling loop.run_in_executor() in different places
-"""
-
 import asyncio
 import time
 from time import sleep
@@ -47,3 +42,23 @@ def chunks(lst: list, n: int):
 if __name__ == "__main__":
     start = time.time()
     result = asyncio.run(main())
+
+"""
+Output:
+
+io bound task input [1, 2]
+Time: 0.0014040470123291016
+io bound task input [3, 4]
+Time: 0.001605987548828125
+io bound task input [5, 6]
+Time: 0.0017092227935791016
+io bound task input [7, 8]
+Time: 1.006925106048584
+io bound task input [9]
+Time: 1.0069482326507568
+io bound task input [10, 11]
+Time: 2.013857126235962
+[[1, 2, 3, 4, 5, 6], [7, 8, 9], [10, 11]]
+Done!
+
+"""
