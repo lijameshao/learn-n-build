@@ -1,0 +1,28 @@
+service: aws-websocket-chatapp
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: python3.8
+
+functions:
+  hello:
+    handler: handler.hello
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    pythonBin: python
+    dockerizePip: non-linux
+    slim: true
+    layer:
+      name: ${self:provider.stage}-python-requirements
+      description: Python requirements lambda layer
+      compatibleRuntimes:
+        - python3.8
+      licenseInfo: GPLv3
+      allowedAccounts:
+        - "*"
