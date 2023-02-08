@@ -8,10 +8,6 @@ provider:
   stage: ${opt:stage, 'local'}
   region: us-east-1
 
-# functions:
-#   hello:
-#     handler: handler.main
-
 resources:
   Conditions:
     IsProd:
@@ -20,6 +16,253 @@ resources:
         - prod
 
   Resources:
+    ApiGwAccountConfig:
+      Type: "AWS::ApiGateway::Account"
+      Properties:
+        CloudWatchRoleArn: !GetAtt "ApiGatewayLoggingRole.Arn"
+    ApiGatewayLoggingRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - "apigateway.amazonaws.com"
+              Action: "sts:AssumeRole"
+        Path: "/"
+        ManagedPolicyArns:
+          - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
+    ChatAppWebSocket:
+      Type: AWS::ApiGatewayV2::Api
+      Properties:
+        Name: ChatAppWebSocket
+        ProtocolType: WEBSOCKET
+        RouteSelectionExpression: "$request.body.action"
+        Description: "WebSocket API Gateway for chat app."
+
+    ChatAppConnectRoute:
+      Type: AWS::ApiGatewayV2::Route
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        RouteKey: $connect
+        # RouteResponseSelectionExpression: "$default"
+        AuthorizationType: NONE
+        ApiKeyRequired: false
+        OperationName: ChatAppConnectRoute
+        Target: !Join
+          - "/"
+          - - "integrations"
+            - !Ref ChatAppConnectInteg
+
+    # ChatAppConnectRouteResponse:
+    #   Type: AWS::ApiGatewayV2::RouteResponse
+    #   Properties:
+    #     RouteId: !Ref ChatAppConnectRoute
+    #     ApiId: !Ref ChatAppWebSocket
+    #     RouteResponseKey: $default
+
+    ChatAppConnectInteg:
+      Type: AWS::ApiGatewayV2::Integration
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        Description: Connect Integration
+        # TODO: replace with Auth lambda
+        IntegrationType: AWS_PROXY
+        IntegrationUri: !Join
+          - ""
+          - - "arn:"
+            - !Ref "AWS::Partition"
+            - ":apigateway:"
+            - !Ref "AWS::Region"
+            - ":lambda:path/2015-03-31/functions/"
+            - !GetAtt ConnectHandler2FFD52D8.Arn
+            - /invocations
+        # RequestTemplates:
+        #   "200": '{"statusCode" : 200}'
+        # TemplateSelectionExpression: "200"
+        # PassthroughBehavior: "WHEN_NO_MATCH"
+
+    # ChatAppConnectIntegResp:
+    #   Type: AWS::ApiGatewayV2::IntegrationResponse
+    #   Properties:
+    #     ApiId: !Ref ChatAppWebSocket
+    #     IntegrationId: !Ref ChatAppConnectInteg
+    #     IntegrationResponseKey: "$default"
+    #     ResponseTemplates:
+    #       "200": '{"statusCode" : 200}'
+
+    ChatAppDisconnectRoute:
+      Type: AWS::ApiGatewayV2::Route
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        RouteKey: $disconnect
+        # RouteResponseSelectionExpression: "$default"
+        AuthorizationType: NONE
+        OperationName: ChatAppDisconnectRoute
+        Target: !Join
+          - "/"
+          - - "integrations"
+            - !Ref DisconnectInteg
+
+    # DisconnectRouteResponse:
+    #   Type: AWS::ApiGatewayV2::RouteResponse
+    #   Properties:
+    #     RouteId: !Ref ChatAppDisconnectRoute
+    #     ApiId: !Ref ChatAppWebSocket
+    #     RouteResponseKey: $default
+
+    DisconnectInteg:
+      Type: AWS::ApiGatewayV2::Integration
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        Description: Disconnect Integration
+        IntegrationType: AWS_PROXY
+        IntegrationUri: !Join
+          - ""
+          - - "arn:"
+            - !Ref "AWS::Partition"
+            - ":apigateway:"
+            - !Ref "AWS::Region"
+            - ":lambda:path/2015-03-31/functions/"
+            - !GetAtt DisconnectHandlerCB7ED6F7.Arn
+            - /invocations
+        # IntegrationType: MOCK
+        # RequestTemplates:
+        #   "200": '{"statusCode" : 200}'
+        # TemplateSelectionExpression: "200"
+        # PassthroughBehavior: "WHEN_NO_MATCH"
+
+    # DisconnectIntegResp:
+    #   Type: AWS::ApiGatewayV2::IntegrationResponse
+    #   Properties:
+    #     ApiId: !Ref ChatAppWebSocket
+    #     IntegrationId: !Ref DisconnectInteg
+    #     IntegrationResponseKey: "$default"
+    #     ResponseTemplates:
+    #       "200": '{"statusCode" : 200}'
+
+    DefaultRoute:
+      Type: AWS::ApiGatewayV2::Route
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        RouteKey: $default
+        # RouteResponseSelectionExpression: "$default"
+        AuthorizationType: NONE
+        OperationName: DefaultRoute
+        Target: !Join
+          - "/"
+          - - "integrations"
+            - !Ref DefaultInteg
+
+    # DefaultRouteResponse:
+    #   Type: AWS::ApiGatewayV2::RouteResponse
+    #   Properties:
+    #     RouteId: !Ref DefaultRoute
+    #     ApiId: !Ref ChatAppWebSocket
+    #     RouteResponseKey: $default
+
+    DefaultInteg:
+      Type: AWS::ApiGatewayV2::Integration
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        Description: Default Integration
+        IntegrationType: AWS_PROXY
+        IntegrationUri: !Join
+          - ""
+          - - "arn:"
+            - !Ref "AWS::Partition"
+            - ":apigateway:"
+            - !Ref "AWS::Region"
+            - ":lambda:path/2015-03-31/functions/"
+            - !GetAtt DefaultHandler604DF7AC.Arn
+            - /invocations
+        # IntegrationType: MOCK
+        # RequestTemplates:
+        #   "200": '{"statusCode" : 200}'
+        # TemplateSelectionExpression: "200"
+
+    # DefaultIntegResp:
+    #   Type: AWS::ApiGatewayV2::IntegrationResponse
+    #   Properties:
+    #     ApiId: !Ref ChatAppWebSocket
+    #     IntegrationId: !Ref DefaultInteg
+    #     IntegrationResponseKey: $default
+    #     ResponseTemplates:
+    #       "200": '{"statusCode" : 200, "connectionId" : "$context.connectionId"}'
+    #     TemplateSelectionExpression: "200"
+
+    SendMessageRoute:
+      Type: AWS::ApiGatewayV2::Route
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        RouteKey: sendmessage
+        # RouteResponseSelectionExpression: "$default"
+        AuthorizationType: NONE
+        OperationName: SendMessageRoute
+        Target: !Join
+          - "/"
+          - - "integrations"
+            - !Ref SendMessageInteg
+
+    # SendMessageRouteResponse:
+    #   Type: AWS::ApiGatewayV2::RouteResponse
+    #   Properties:
+    #     RouteId: !Ref SendMessageRoute
+    #     ApiId: !Ref ChatAppWebSocket
+    #     RouteResponseKey: $default
+
+    SendMessageInteg:
+      Type: AWS::ApiGatewayV2::Integration
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+        Description: Send Message Integration
+        IntegrationType: AWS_PROXY
+        IntegrationUri: !Join
+          - ""
+          - - "arn:"
+            - !Ref "AWS::Partition"
+            - ":apigateway:"
+            - !Ref "AWS::Region"
+            - ":lambda:path/2015-03-31/functions/"
+            - !GetAtt SendMessageHandlerDFBBCD6B.Arn
+            - /invocations
+        # RequestTemplates:
+        #   "200": '{"statusCode" : 200}'
+        # TemplateSelectionExpression: "200"
+
+    # SendMessageIntegResp:
+    #   Type: AWS::ApiGatewayV2::IntegrationResponse
+    #   Properties:
+    #     ApiId: !Ref ChatAppWebSocket
+    #     IntegrationId: !Ref SendMessageInteg
+    #     IntegrationResponseKey: $default
+    #     ResponseTemplates:
+    #       "200": '{"statusCode" : 200, "connectionId" : "$context.connectionId"}'
+    #     TemplateSelectionExpression: "200"
+
+    Deployment:
+      Type: AWS::ApiGatewayV2::Deployment
+      DependsOn:
+        - ChatAppConnectRoute
+        - ChatAppDisconnectRoute
+        - DefaultRoute
+      Properties:
+        ApiId: !Ref ChatAppWebSocket
+
+    Stage:
+      Type: AWS::ApiGatewayV2::Stage
+      Properties:
+        StageName: dev
+        Description: Dev stage
+        DeploymentId: !Ref Deployment
+        ApiId: !Ref ChatAppWebSocket
+        DefaultRouteSettings:
+          DetailedMetricsEnabled: true
+          LoggingLevel: INFO
+
     ConnectionsTable8000B8A1:
       Type: "AWS::DynamoDB::Table"
       Properties:
@@ -107,6 +350,16 @@ resources:
       DependsOn:
         - ConnectHandlerServiceRoleDefaultPolicy7DE94863
         - ConnectHandlerServiceRole7E4A9B1F
+
+    ConnectHandlerApiGatewayLambdaInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: !Ref ConnectHandler2FFD52D8
+        Principal: "apigateway.amazonaws.com"
+      DependsOn:
+        - ConnectHandler2FFD52D8
+
     DisconnectHandlerServiceRoleE54F14F9:
       Type: "AWS::IAM::Role"
       Properties:
@@ -175,6 +428,15 @@ resources:
       DependsOn:
         - DisconnectHandlerServiceRoleDefaultPolicy1800B9E5
         - DisconnectHandlerServiceRoleE54F14F9
+    DisconnectHandlerApiGatewayLambdaInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: !Ref DisconnectHandlerCB7ED6F7
+        Principal: "apigateway.amazonaws.com"
+      DependsOn:
+        - DisconnectHandlerCB7ED6F7
+
     MessageHandlerServiceRoleDF05266A:
       Type: "AWS::IAM::Role"
       Properties:
@@ -273,6 +535,15 @@ resources:
       DependsOn:
         - MessageHandlerServiceRoleDefaultPolicyD818A6AA
         - MessageHandlerServiceRoleDF05266A
+    SendMessageHandlerApiGatewayLambdaInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: !Ref SendMessageHandlerDFBBCD6B
+        Principal: "apigateway.amazonaws.com"
+      DependsOn:
+        - SendMessageHandlerDFBBCD6B
+
     DefaultHandlerServiceRoleDF00569C:
       Type: "AWS::IAM::Role"
       Properties:
@@ -364,6 +635,15 @@ resources:
       DependsOn:
         - DefaultHandlerServiceRoleDefaultPolicy2F57C32F
         - DefaultHandlerServiceRoleDF00569C
+    DefaultHandlerApiGatewayLambdaInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: !Ref DefaultHandler604DF7AC
+        Principal: "apigateway.amazonaws.com"
+      DependsOn:
+        - DefaultHandler604DF7AC
+
     manageConnections7F91357B:
       Type: "AWS::IAM::Policy"
       Properties:
