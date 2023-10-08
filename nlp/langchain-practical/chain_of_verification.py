@@ -1,4 +1,6 @@
 """
+https://arxiv.org/abs/2309.11495
+
 Custom chain:
     input_key:
         - query
