@@ -191,8 +191,6 @@ verification_questions = list(
     intermediate_result.facts_and_verification_questions.values()
 )
 
-# TODO: Chain with search agent
-
 
 # =============================================================================
 # Answer each question independently
@@ -217,6 +215,49 @@ for i in range(len(verification_questions)):
     answer = answer.lstrip("\n")
     verify_results.append(answer)
     verify_results_str += f"Question: {question}\nAnswer: {answer}\n\n"
+
+
+# =============================================================================
+# Answer each question with Internet search
+# =============================================================================
+from langchain.tools import DuckDuckGoSearchResults
+import re
+
+def format_search_results(search_results_str: str) -> dict[str, str]:
+    pattern = r"\[date: (.*?), title: (.*?), snippet: (.*?), source: (.*?), link: (.*?)\]"
+    # pattern = r"\[date:(.*?), title: '(.*?)', snippet: (.*?), source: (.*?), link: (.*?)\]"
+
+    matches = re.findall(pattern, search_results_str)
+
+    # Create a list of dictionaries
+    result = []
+    for match in matches:
+        result.append({
+            "date": match[0],
+            "title": match[1],
+            "snippet": match[2],
+            "source": match[3],
+            "link": match[4]
+        })
+    return result
+
+search = DuckDuckGoSearchResults()
+
+verify_results = []
+verify_results_str = ""
+for i in range(len(verification_questions)):
+    claimed_fact = claimed_facts[i]
+    question = verification_questions[i]
+    
+    search_results_str = search.run(question, num_results=3)
+    search_results = format_search_results(search_results_str)
+    
+    search_results_snippets = [i["snippet"] for i in search_results]
+    search_results_links = [i["link"] for i in search_results]
+    
+    search_results_snippets_str = "\n".join(search_results_snippets)
+    verify_results.append(search_results_snippets_str)
+
 
 # =============================================================================
 # Answer all in one go (less preferred)
