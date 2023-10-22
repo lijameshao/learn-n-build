@@ -112,7 +112,9 @@ from langchain.pydantic_v1 import BaseModel, Field
 
 
 os.environ["OPENAI_API_KEY"] = ""
-llm = OpenAI(temperature=0, model_name="gpt-3.5-turbo-instruct") # GPT-3.5 tends to work less well in generating a consistent final response
+llm = OpenAI(
+    temperature=0, model_name="gpt-3.5-turbo"
+)  # GPT-3.5 tends to work less well in generating a consistent final response
 # llm = ChatOpenAI(temperature=0, model_name="gpt-4")
 
 
@@ -191,9 +193,6 @@ verification_questions = list(
     intermediate_result.facts_and_verification_questions.values()
 )
 
-# TODO: Chain with search agent
-
-
 # =============================================================================
 # Answer each question independently
 # =============================================================================
@@ -217,6 +216,59 @@ for i in range(len(verification_questions)):
     answer = answer.lstrip("\n")
     verify_results.append(answer)
     verify_results_str += f"Question: {question}\nAnswer: {answer}\n\n"
+
+
+# =============================================================================
+# Answer using search agent
+# =============================================================================
+
+from langchain.agents import ConversationalChatAgent, AgentExecutor
+from langchain.tools import DuckDuckGoSearchResults
+import re
+
+
+def format_search_results(search_results_str: str) -> dict[str, str]:
+    pattern = r"\[snippet: (.*?), title: (.*?), link: (.*?)\]"
+    matches = re.findall(pattern, search_results_str)
+    result = []
+    for match in matches:
+        result.append({"snippet": match[0], "title": match[1], "link": match[2]})
+    return result
+
+
+search = DuckDuckGoSearchResults()
+tools = [search]
+custom_system_message = "Assistant assumes no knowledge and relies on internet search to answer user's queries."
+max_agent_iterations = 10
+
+chat_agent = ConversationalChatAgent.from_llm_and_tools(
+    llm=llm, tools=tools, system_message=custom_system_message
+)
+search_executor = AgentExecutor.from_agent_and_tools(
+    agent=chat_agent,
+    tools=tools,
+    return_intermediate_steps=True,
+    handle_parsing_errors=True,
+    max_iterations=max_agent_iterations,
+)
+
+verify_results_with_agent = []
+verify_results_with_agent_str = ""
+for i in range(len(verification_questions)):
+    claimed_fact = claimed_facts[i]
+    question = verification_questions[i]
+
+    chain_input = {"input": question, "chat_history": []}
+    search_result = search_executor(chain_input)
+
+    # formatted_search_result not currently used - can be useful if we want to quote source
+    formatted_search_result = format_search_results(search_result)
+
+    answer = search_result["output"]
+    search_result_intermediate_steps = search_result["intermediate_steps"]
+    verify_results_with_agent.append(answer)
+    verify_results_with_agent_str += f"Question: {question}\nAnswer: {answer}\n\n"
+
 
 # =============================================================================
 # Answer all in one go (less preferred)
@@ -306,8 +358,12 @@ final_response = final_response_chain.run(
     verify_results=verify_results_str,
 )
 
+final_response_using_search_results = final_response_chain.run(
+    query=intermediate_result.query,
+    base_response=intermediate_result.base_response,
+    verify_results=verify_results_with_agent_str,
+)
 
 # =============================================================================
 # TODO: Final response (Factor + revise)
 # =============================================================================
-
