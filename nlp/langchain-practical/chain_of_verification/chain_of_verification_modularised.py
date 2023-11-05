@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import warnings
+from operator import itemgetter
 from typing import Any, Dict, List, Optional
 
 from langchain.callbacks.manager import CallbackManagerForChainRun
@@ -17,6 +18,7 @@ from langchain.schema.language_model import BaseLanguageModel
 from langchain.output_parsers import PydanticOutputParser
 
 from langchain.prompts.prompt import PromptTemplate
+from langchain.schema.runnable import RunnableMap, RunnablePassthrough
 
 BASELINE_RESPONSE_TEMPLATE = """{query}\n\n"""
 BASELINE_RESPONSE_PROMPT = PromptTemplate(
@@ -140,7 +142,9 @@ class CoVeChain(Chain):
         _run_manager = run_manager or CallbackManagerForChainRun.get_noop_manager()
         query = inputs[self.input_key]
 
-        output = self.cove_chain({"query": query}, callbacks=_run_manager.get_child())
+        output = self.cove_chain.invoke(
+            {"query": query}, callbacks=_run_manager.get_child()
+        )
         return {self.output_key: output["result"]}
 
     @property
@@ -161,33 +165,32 @@ class CoVeChain(Chain):
             pydantic_object=PlanVerificationsOutputModel
         )
 
-        baseline_response_chain = baseline_response_prompt | llm | StrOutputParser()
-        plan_verifications_chain: PlanVerificationsOutputModel = (
-            {"baseline_response": baseline_response_chain}
+        baseline_response = baseline_response_prompt | llm | StrOutputParser()
+        plan_verifcations_response: PlanVerificationsOutputModel = (
+            {"baseline_response": baseline_response}
             | plan_verifications_prompt
             | llm
             | plan_verifications_output_parser
         )
         verification_questions = list(
-            plan_verifications_chain.facts_and_verification_questions.values()
+            plan_verifcations_response.facts_and_verification_questions.values()
         )
-        execute_verification_chain = (
-            execute_verifications_prompt | llm | StrOutputParser()
+        verify_chain = (
+            {"verification_question": itemgetter("verification_question")}
+            | execute_verifications_prompt
+            | llm
+            | StrOutputParser()
         )
 
         verify_results_str = ""
         for i in range(len(verification_questions)):
             question = verification_questions[i]
-            answer = execute_verification_chain.invoke(question)
+            answer = verify_chain.invoke({"verification_question": question})
             answer = answer.lstrip("\n")
             verify_results_str += f"Question: {question}\nAnswer: {answer}\n\n"
 
-        # cove_chain = (
-        #     {"result": synopsis_prompt | llm | StrOutputParser()}
-        #     | review_prompt
-        #     | llm
-        #     | StrOutputParser()
-        # )
+        map_ = RunnableMap(query=RunnablePassthrough())
+        cove_chain = map_ | revised_response_prompt | llm | StrOutputParser()
         return cls(
             cove_chain=cove_chain,
             **kwargs,
